@@ -16,7 +16,6 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 BLUE = (0, 150, 255)
 PURPLE = (150, 0, 255)
-GRAY = (180, 180, 180)
 
 # Fonts
 font_large = pygame.font.SysFont("arial", 48)
@@ -27,8 +26,6 @@ font_small = pygame.font.SysFont("arial", 24)
 def create_game_assets():
     # Player ship
     player_img = pygame.image.load('./assets/images/spaceship.png')
-    pygame.draw.polygon(player_img, BLUE, [(25, 0), (0, 80), (50, 80)])
-    pygame.draw.polygon(player_img, PURPLE, [(25, 10), (10, 70), (40, 70)])
 
     # Laser
     laser_img = pygame.Surface((4, 20), pygame.SRCALPHA)
@@ -37,7 +34,7 @@ def create_game_assets():
         if alpha < 0: alpha = 0
         pygame.draw.rect(laser_img, (*PURPLE, alpha), (0, i, 4, 1))
 
-    # Asteroids
+    # Asteroids - different sizes worth different points
     asteroid_large = pygame.Surface((120, 120), pygame.SRCALPHA)
     pygame.draw.circle(asteroid_large, BLUE, (60, 60), 50)
     pygame.draw.circle(asteroid_large, PURPLE, (60, 60), 45, 2)
@@ -49,18 +46,6 @@ def create_game_assets():
     asteroid_small = pygame.Surface((40, 40), pygame.SRCALPHA)
     pygame.draw.circle(asteroid_small, BLUE, (20, 20), 15)
     pygame.draw.circle(asteroid_small, PURPLE, (20, 20), 12, 2)
-
-    # Power-ups
-    powerup_shield = pygame.Surface((30, 30), pygame.SRCALPHA)
-    pygame.draw.circle(powerup_shield, BLUE, (15, 15), 15, 2)
-    pygame.draw.circle(powerup_shield, BLUE, (15, 15), 10, 2)
-
-    powerup_rapid = pygame.Surface((30, 30), pygame.SRCALPHA)
-    pygame.draw.rect(powerup_rapid, PURPLE, (10, 5, 10, 20))
-    pygame.draw.rect(powerup_rapid, PURPLE, (5, 10, 20, 10))
-
-    powerup_health = pygame.Surface((30, 30), pygame.SRCALPHA)
-    pygame.draw.polygon(powerup_health, WHITE, [(15, 5), (5, 25), (25, 25)])
 
     # Background
     star_bg = pygame.Surface((800, 600), pygame.SRCALPHA)
@@ -76,9 +61,6 @@ def create_game_assets():
         'asteroid_large': asteroid_large,
         'asteroid_medium': asteroid_medium,
         'asteroid_small': asteroid_small,
-        'powerup_shield': powerup_shield,
-        'powerup_rapid': powerup_rapid,
-        'powerup_health': powerup_health,
         'star_bg': star_bg
     }
 
@@ -90,7 +72,6 @@ try:
     mixer.music.set_volume(0.5)
     shoot_sound = mixer.Sound('shoot.wav')
     explosion_sound = mixer.Sound('explosion.wav')
-    powerup_sound = mixer.Sound('powerup.wav')
     mixer.music.play(-1)
     sounds_available = True
 except:
@@ -99,14 +80,9 @@ except:
 # Game variables
 playerX = 370
 playerY = 480
-playerX_change = 0
 player_speed = 8
 player_cooldown = 0
 player_health = 100
-player_shield = 50
-player_max_shield = 50
-player_shield_regen = 0.1
-player_last_hit = 0
 
 lasers = []
 laser_speed = 15
@@ -115,13 +91,15 @@ asteroids = []
 asteroid_spawn_timer = 0
 spawn_interval = 60
 
-powerups = []
-
 score = 0
 high_score = 0
-level = 1
-difficulty_timer = 0
-game_time = 0
+
+# Asteroid point values
+ASTEROID_POINTS = {
+    'large': 30,
+    'medium': 20,
+    'small': 10
+}
 
 # Menu functions
 def draw_text(message, font, color, surface, x, y):
@@ -133,9 +111,9 @@ def show_main_menu():
     while True:
         screen.fill(BLACK)
         draw_text("Spaceship vs Asteroids", font_large, WHITE, screen, 400, 120)
-        draw_text("1 - Start Game", font_medium, GRAY, screen, 400, 250)
-        draw_text("2 - Instructions", font_medium, GRAY, screen, 400, 300)
-        draw_text("3 - Quit Game", font_medium, GRAY, screen, 400, 350)
+        draw_text("1 - Start Game", font_medium, WHITE, screen, 400, 250)
+        draw_text("2 - Instructions", font_medium, WHITE, screen, 400, 300)
+        draw_text("3 - Quit Game", font_medium, WHITE, screen, 400, 350)
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -157,9 +135,10 @@ def show_instructions():
         draw_text("How to Play", font_large, WHITE, screen, 400, 100)
         draw_text("Use arrow keys to move your spaceship", font_small, WHITE, screen, 400, 200)
         draw_text("Press SPACE to shoot asteroids", font_small, WHITE, screen, 400, 240)
-        draw_text("Avoid getting hit by asteroids", font_small, WHITE, screen, 400, 280)
-        draw_text("Collect power-ups for bonuses", font_small, WHITE, screen, 400, 320)
-        draw_text("Press ESC to return to main menu", font_small, GRAY, screen, 400, 400)
+        draw_text("Large asteroids: 30 pts", font_small, BLUE, screen, 400, 280)
+        draw_text("Medium asteroids: 20 pts", font_small, BLUE, screen, 400, 320)
+        draw_text("Small asteroids: 10 pts", font_small, BLUE, screen, 400, 360)
+        draw_text("Press ESC to return to main menu", font_small, WHITE, screen, 400, 440)
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -176,8 +155,8 @@ def show_game_over():
         draw_text("Game Over", font_large, WHITE, screen, 400, 200)
         draw_text(f"Score: {score}", font_medium, WHITE, screen, 400, 280)
         draw_text(f"High Score: {high_score}", font_medium, BLUE, screen, 400, 320)
-        draw_text("1 - Return to Main Menu", font_medium, GRAY, screen, 400, 400)
-        draw_text("2 - Quit Game", font_medium, GRAY, screen, 400, 450)
+        draw_text("1 - Return to Main Menu", font_medium, WHITE, screen, 400, 400)
+        draw_text("2 - Quit Game", font_medium, WHITE, screen, 400, 450)
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -192,15 +171,8 @@ def show_game_over():
                     return "quit"
 
 # Game functions
-playerImg = pygame.image.load('./assets/images/spaceship.png')
 def player(x, y):
-    screen.blit(playerImg, (x, y))
-    if player_shield > 0:
-        shield_surface = pygame.Surface((playerImg.get_width() + 20, 
-                                       playerImg.get_height() + 20), pygame.SRCALPHA)
-        pygame.draw.polygon(shield_surface, (*BLUE, 50), 
-                          [(25, 0), (0, 80), (50, 80)])
-        screen.blit(shield_surface, (x - 10, y - 10))
+    screen.blit(assets['player_img'], (x, y))
 
 def fire_laser(x, y):
     lasers.append({
@@ -234,27 +206,9 @@ def create_asteroid():
         'image': image,
         'speed': speed,
         'health': health,
+        'size': size,  # Track asteroid size for scoring
         'rotation': 0,
         'rotation_speed': random.uniform(-1, 1),
-        'rect': image.get_rect(center=(x, y))
-    })
-
-def create_powerup(x, y):
-    power_type = random.choice(["shield", "rapid", "health"])
-    
-    if power_type == "shield":
-        image = assets['powerup_shield']
-    elif power_type == "rapid":
-        image = assets['powerup_rapid']
-    else:
-        image = assets['powerup_health']
-    
-    powerups.append({
-        'x': x,
-        'y': y,
-        'image': image,
-        'speed': 2,
-        'type': power_type,
         'rect': image.get_rect(center=(x, y))
     })
 
@@ -274,58 +228,36 @@ def draw_game():
         rotated = pygame.transform.rotate(asteroid['image'], asteroid['rotation'])
         screen.blit(rotated, rotated.get_rect(center=(asteroid['x'], asteroid['y'])))
     
-    # power-ups
-    for powerup in powerups:
-        screen.blit(powerup['image'], powerup['rect'])
-    
     # player
     player(playerX, playerY)
     
-    # Health line
+    # Health bar
     pygame.draw.rect(screen, (255, 0, 0), (20, 20, 200, 20))
     pygame.draw.rect(screen, (0, 255, 0), (20, 20, 200 * (player_health / 100), 20))
     
-    # Shield line
-    pygame.draw.rect(screen, (100, 100, 255), (20, 50, 200, 15))
-    pygame.draw.rect(screen, BLUE, (20, 50, 200 * (player_shield / player_max_shield), 15))
-    
-    # Score and level
+    # Score display
     draw_text(f"Score: {score}", font_small, WHITE, screen, 700, 30)
-    draw_text(f"Level: {level}", font_small, WHITE, screen, 700, 70)
 
 def update_game():
-    global playerX, playerX_change, player_cooldown, player_shield, player_health, player_last_hit
-    global score, high_score, level, difficulty_timer, game_time, asteroid_spawn_timer, spawn_interval
+    global playerX, playerY, player_cooldown, player_health
+    global score, high_score, asteroid_spawn_timer, spawn_interval
     
-    # Update player
+    # Player movement
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LEFT] and playerX > 0:
         playerX -= player_speed
-    if keys[pygame.K_RIGHT] and playerX < 800 - playerImg.get_width():
+    if keys[pygame.K_RIGHT] and playerX < 800 - assets['player_img'].get_width():
         playerX += player_speed
     
     if player_cooldown > 0:
         player_cooldown -= 1
-    
-    # Shield come back
-    if pygame.time.get_ticks() - player_last_hit > 3000:
-        player_shield = min(player_max_shield, player_shield + player_shield_regen)
-    
-    # difficulty
-    game_time += 1
-    difficulty_timer += 1
-    
-    if difficulty_timer >= 600:  # 10 seconds
-        difficulty_timer = 0
-        level += 1
-        spawn_interval = max(15, spawn_interval - 5)
     
     # Spawn asteroids
     asteroid_spawn_timer += 1
     if asteroid_spawn_timer >= spawn_interval:
         asteroid_spawn_timer = 0
         create_asteroid()
-        if random.random() < 0.3 * level:
+        if random.random() < 0.3:  # 30% chance for an extra asteroid
             create_asteroid()
     
     # Update lasers
@@ -334,8 +266,8 @@ def update_game():
         if laser['rect'].bottom < 0:
             lasers.remove(laser)
     
-    # Update asteroids
-    player_rect = playerImg.get_rect(topleft=(playerX, playerY))
+    # Update asteroids and check collisions
+    player_rect = assets['player_img'].get_rect(topleft=(playerX, playerY))
     for asteroid in asteroids[:]:
         asteroid['y'] += asteroid['speed']
         asteroid['rotation'] += asteroid['rotation_speed']
@@ -343,23 +275,14 @@ def update_game():
         
         if asteroid['rect'].top > 600:
             asteroids.remove(asteroid)
-        elif (pygame.time.get_ticks() - player_last_hit > 1000 and 
-              check_collision(asteroid['rect'], player_rect)):
-            if player_shield > 0:
-                player_shield -= 20
-                if player_shield < 0:
-                    player_health += player_shield
-                    player_shield = 0
-            else:
-                player_health -= 20
-            
-            player_last_hit = pygame.time.get_ticks()
+        elif check_collision(asteroid['rect'], player_rect):
+            player_health -= 20
             asteroids.remove(asteroid)
             
             if player_health <= 0:
                 return "game_over"
     
-    # Collisions
+    # Check laser-asteroid collisions
     for laser in lasers[:]:
         for asteroid in asteroids[:]:
             if check_collision(laser['rect'], asteroid['rect']):
@@ -367,60 +290,32 @@ def update_game():
                 if asteroid['health'] <= 0:
                     if sounds_available:
                         explosion_sound.play()
-                    score += 10 * (4 - (asteroid['image'].get_width() // 20))
+                    # Award points based on asteroid size
+                    score += ASTEROID_POINTS[asteroid['size']]
                     asteroids.remove(asteroid)
-                    
-                    # Chance to spawn power-up
-                    if random.random() < 0.2:
-                        create_powerup(asteroid['x'], asteroid['y'])
                 lasers.remove(laser)
                 break
-    
-    # Update power-ups
-    for powerup in powerups[:]:
-        powerup['y'] += powerup['speed']
-        powerup['rect'].center = (powerup['x'], powerup['y'])
-        
-        if powerup['rect'].top > 600:
-            powerups.remove(powerup)
-        elif check_collision(powerup['rect'], player_rect):
-            if powerup['type'] == "shield":
-                player_shield = min(player_max_shield, player_shield + 30)
-            elif powerup['type'] == "rapid":
-                player_cooldown = max(0, player_cooldown - 5)
-            else:  # health
-                player_health = min(100, player_health + 20)
-            
-            powerups.remove(powerup)
-            if sounds_available:
-                powerup_sound.play()
     
     return "playing"
 
 def reset_game():
-    global playerX, playerY, player_health, player_shield, player_last_hit, player_cooldown
-    global lasers, asteroids, powerups
-    global score, level, difficulty_timer, game_time, asteroid_spawn_timer, spawn_interval
+    global playerX, playerY, player_health, player_cooldown
+    global lasers, asteroids
+    global score, asteroid_spawn_timer, spawn_interval
     
     playerX = 370
     playerY = 480
     player_health = 100
-    player_shield = 50
-    player_last_hit = 0
     player_cooldown = 0
     
     lasers = []
     asteroids = []
-    powerups = []
     
     score = 0
-    level = 1
-    difficulty_timer = 0
-    game_time = 0
     asteroid_spawn_timer = 0
     spawn_interval = 60
 
-    # Score
+    # Load high score
     try:
         with open('highscore.txt', 'r') as f:
             high_score = int(f.read())
@@ -429,8 +324,7 @@ def reset_game():
 
 # Game loop
 def main():
-    global high_score
-    global player_cooldown
+    global high_score, player_cooldown
     
     running = True
     while running:
@@ -454,7 +348,7 @@ def main():
                             player_cooldown = 15
                             if sounds_available:
                                 shoot_sound.play()
-                            fire_laser(playerX + playerImg.get_width() // 2, playerY)
+                            fire_laser(playerX + assets['player_img'].get_width() // 2, playerY)
                 
                 if not running:
                     break
