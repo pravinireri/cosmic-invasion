@@ -17,9 +17,6 @@ WHITE = (255, 255, 255)
 BLUE = (0, 150, 255)
 PURPLE = (150, 0, 255)
 
-# Background Music
-mixer.music.load('./assets/music/background.wav')
-
 # Fonts
 font_large = pygame.font.SysFont("arial", 48)
 font_medium = pygame.font.SysFont("arial", 32)
@@ -27,7 +24,7 @@ font_small = pygame.font.SysFont("arial", 24)
 
 # Game Stuff
 def create_game_assets():
-    # ship
+    #  ship
     player_img = pygame.image.load('./assets/images/spaceship.png')
 
     # Laser
@@ -71,10 +68,10 @@ assets = create_game_assets()
 
 # Sound setup
 try:
-    mixer.music.load('background.wav')
+    mixer.music.load('./assets/music/background.wav')
     mixer.music.set_volume(0.5)
-    shoot_sound = mixer.Sound('shoot.wav')
-    explosion_sound = mixer.Sound('explosion.wav')
+    shoot_sound = mixer.Sound('./assets/music/shoot.wav')
+    explosion_sound = mixer.Sound('./assets/music/explosion.wav')
     mixer.music.play(-1)
     sounds_available = True
 except:
@@ -331,8 +328,6 @@ def main():
     
     running = True
     while running:
-        mixer.music.play(-1)
-
         # Show main menu
         menu_choice = show_main_menu()
         
