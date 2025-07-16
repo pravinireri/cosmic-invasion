@@ -17,14 +17,17 @@ WHITE = (255, 255, 255)
 BLUE = (0, 150, 255)
 PURPLE = (150, 0, 255)
 
+# Background Music
+mixer.music.load('./assets/music/background.wav')
+
 # Fonts
 font_large = pygame.font.SysFont("arial", 48)
 font_medium = pygame.font.SysFont("arial", 32)
 font_small = pygame.font.SysFont("arial", 24)
 
-# Game assets
+# Game Stuff
 def create_game_assets():
-    # Player ship
+    # ship
     player_img = pygame.image.load('./assets/images/spaceship.png')
 
     # Laser
@@ -328,6 +331,8 @@ def main():
     
     running = True
     while running:
+        mixer.music.play(-1)
+
         # Show main menu
         menu_choice = show_main_menu()
         
